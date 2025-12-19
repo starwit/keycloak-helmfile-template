@@ -1,0 +1,9 @@
+apiVersion: v2
+name: config-data
+description: A Helm chart for Kubernetes to deploy config used by multiple components
+
+type: application
+
+version: 0.1.0
+
+appVersion: "0.1.0"

@@ -1,0 +1,11 @@
+# Default values for config-data.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+hostname: {{ .Values.hostname }}
+tls: {{ .Values.tls }}
+auth:
+  realmname: {{ .Values.auth.realmname }}
+  clientId: {{ .Values.auth.clientId }}
+  clientSecret: {{ .Values.auth.clientSecret }}
+  realmAdminPw: {{ .Values.auth.realmAdminPw }}

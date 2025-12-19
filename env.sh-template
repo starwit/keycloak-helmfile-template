@@ -1,0 +1,1 @@
+export KEYCLOAK_DB_PW=keycloak

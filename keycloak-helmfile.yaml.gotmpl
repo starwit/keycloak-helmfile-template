@@ -1,0 +1,93 @@
+repositories:
+  - name: starwitorg
+    url: registry-1.docker.io/starwitorg
+    oci: true
+
+
+helmDefaults:
+  wait: true
+
+environments:
+  default:
+    values:
+      - namespace: auth-test
+        hostname: cluster.local
+        tls: false
+        auth:
+          enabled: false
+          realmname: realmname
+          keycloak_admin_pw: adminUserPw
+          keycloak_db_password: {{ requiredEnv "KEYCLOAK_DB_PW" }}
+          clientId: testClientId
+          clientSecret: testClientSecret
+          realmAdminPw: adminUserPw
+          keycloakRealmUrlInternal: http://keycloak/realms/aicockpit
+          keycloakRealmUrlExternal: https://auth.cluster.local/realms/aicockpit
+
+---
+releases:
+  - name: config-data
+    namespace: {{ .Values.namespace }}
+    chart: ./config-data
+    installed: true
+    values:
+      - config-data/values.gotmpl  
+
+  - name: keycloak
+    installed: true
+    namespace: {{ .Values.namespace }}
+    chart: oci://ghcr.io/codecentric/helm-charts/keycloakx
+    version: 7.1.5
+    values:
+     - database:
+          vendor: postgres
+          hostname: postgres-chart-keycloakdb.{{ .Values.namespace }}.svc.cluster.local
+          port: 5432
+          username: keycloak
+          password: '{{ .Values.auth.keycloak_db_password }}'
+          database: keycloak
+       command:
+          - "/opt/keycloak/bin/kc.sh"
+          - "start"
+          - "--http-port=8080"
+          - "--hostname-strict=false"
+          - "--import-realm"
+       extraEnv: |
+          - name: KEYCLOAK_ADMIN
+            value: admin
+          - name: KEYCLOAK_ADMIN_PASSWORD
+            value: {{ .Values.auth.keycloak_db_password }}
+          - name: JAVA_OPTS_APPEND
+            value: >-
+              -Djgroups.dns.query=keycloak-headless
+       extraVolumes: |
+          - name: realm-import
+            configMap:
+              name: realm-import
+       extraVolumeMounts: |
+          - name: realm-import
+            mountPath: "/opt/keycloak/data/import/"
+            readOnly: true
+
+  - name: keycloakdb
+    installed: true
+    namespace: {{ .Values.namespace }}
+    chart: starwitorg/postgres-chart
+    version: 1.2.6
+    values:
+      - init:
+          enabled: true
+          init_user_db: |
+            -- Create schemata, users and extenions
+            CREATE USER keycloak WITH PASSWORD '{{ .Values.auth.keycloak_db_password }}';
+            SELECT 'CREATE DATABASE keycloak owner keycloak' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
+
+          init_tables: |  
+            -- empty
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
