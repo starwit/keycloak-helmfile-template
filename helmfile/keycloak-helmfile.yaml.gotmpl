@@ -21,8 +21,6 @@ environments:
           clientId: testClientId
           clientSecret: testClientSecret
           realmAdminPw: adminUserPw
-          keycloakRealmUrlInternal: http://keycloak/realms/aicockpit
-          keycloakRealmUrlExternal: https://auth.cluster.local/realms/aicockpit
 
 ---
 releases:
@@ -39,35 +37,71 @@ releases:
     chart: oci://ghcr.io/codecentric/helm-charts/keycloakx
     version: 7.1.5
     values:
-     - database:
+      - database:
           vendor: postgres
           hostname: postgres-chart-keycloakdb.{{ .Values.namespace }}.svc.cluster.local
           port: 5432
           username: keycloak
           password: '{{ .Values.auth.keycloak_db_password }}'
           database: keycloak
-       command:
+        command:
           - "/opt/keycloak/bin/kc.sh"
           - "start"
           - "--http-port=8080"
+          - "--http-management-port=9000"
           - "--hostname-strict=false"
           - "--import-realm"
-       extraEnv: |
-          - name: KEYCLOAK_ADMIN
+          - "--proxy-headers=xforwarded"
+          - "--http-management-relative-path=/admin"
+        extraEnv: |
+          - name: KC_BOOTSTRAP_ADMIN_USERNAME
             value: admin
-          - name: KEYCLOAK_ADMIN_PASSWORD
+          - name: KC_BOOTSTRAP_ADMIN_PASSWORD
             value: {{ .Values.auth.keycloak_db_password }}
+          - name: KC_HOSTNAME
+            value: auth.{{ .Values.hostname }}
+          - name: KC_HOSTNAME_URL
+            value: http://auth.{{ .Values.hostname }}
+          - name: KC_HOSTNAME_ADMIN_URL
+            value: http://auth-console.{{ .Values.hostname }}
           - name: JAVA_OPTS_APPEND
             value: >-
               -Djgroups.dns.query=keycloak-headless
-       extraVolumes: |
+        extraVolumes: |
           - name: realm-import
             configMap:
               name: realm-import
-       extraVolumeMounts: |
+        extraVolumeMounts: |
           - name: realm-import
             mountPath: "/opt/keycloak/data/import/"
             readOnly: true
+        ingress:
+          enabled: true
+          rules:
+          - host: auth.{{ .Values.hostname }}
+            paths:
+              - path: /
+                pathType: Prefix
+          console:
+            enabled: true
+            rules:
+            - host: auth-console.{{ .Values.hostname }}
+              paths:
+                - path: /admin
+                  pathType: Prefix
+            servicePort: 9000
+        readinessProbe: |
+          httpGet:
+            path: '/admin/health/ready'
+            port: 'http-internal'
+        livenessProbe: |
+          httpGet:
+            path: '/admin/health/live'
+            port: 'http-internal'
+        startupProbe: |
+          httpGet:
+            path: '/admin/health/started'
+            port: 'http-internal'
 
   - name: keycloakdb
     installed: true
