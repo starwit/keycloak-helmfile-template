@@ -118,4 +118,4 @@ kubectl -n your-namespace cp keycloak-0:/tmp/export.json export.json
 TODO
 
 # License and Contribution
-TODO
+Code in this repo is licensed under the MIT license. See [license file](LICENSE) for more details.
