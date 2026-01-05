@@ -40,7 +40,42 @@ necessary variables, Keycloak can be deployed like so:
 helmfile -e default apply -f keycloak-helmfile.yaml.gotmpl
 ```
 
-See [Helmfile docs](https://helmfile.readthedocs.io/en/latest/) if you need help, on how to use Helmfile
+See [Helmfile docs](https://helmfile.readthedocs.io/en/latest/) if you need help, on 
+how to use Helmfile
+
+### Configuration
+```yaml
+    values:
+      - namespace: auth-test # namespace to install app
+        hostname: yourdomain.com # base hostname
+        tls: true # if true all external URLs are https
+        auth:
+          keycloak_admin_pw: {{ requiredEnv "KEYCLOAK_ADMIN" }} # admin password for console
+          keycloak_db_password: {{ requiredEnv "KEYCLOAK_DB_PW" }} # password for database user
+          importFileLocation: {{ requiredEnv "REALM_IMPORT_LOCATION" }} # add realm export to conf folder, disables 
+          realmname: realmname # name if default realm is imported
+          clientId: testClientId # clientid if default realm is imported
+          clientSecret: testClientSecret # secret for client if default realm is imported
+          realmAdminPw: adminUserPw # realm admin password if default realm is imported
+```
+
+Liveness/Readyness/Started probes timeout can be set like so:
+```yaml
+        startupProbe: |
+          httpGet:
+            path: '/admin/health/started'
+            port: 'http-internal'
+          periodSeconds: 25
+```
+Sometimes Keycloak takes very long to start, so make sure, this values is not preventing a 
+successful start. Also make sure, that Keycloak has enough CPU power to run fast enough. Field 
+cpu is configuring this:
+```yaml
+        resources:
+          requests:
+            memory: "768Mi"
+            cpu: "2000m"
+```
 
 ### Realm Import
 A standard use case is, that upon first installation a Keycloak realm is imported.
@@ -50,9 +85,11 @@ functional users.
 
 Realm is provided as a [config-map](helmfile/config-data/templates/realm.configmap.yaml) in
 which realmname and client secret are inserted as values from your env-file. This file 
-probably needs adaption to your needs.
+probably needs adaption to your needs. 
 
 It is then mounted into Keycloak image and is going to be imported upon first start.
+
+If you have an exported realm, you can set this via REALM_IMPORT_LOCATION in [environment file](helmfile/env.sh-template).
 
 ### Realm Export
 Exporting realms including users can not be done via admin console. Please note that exporting 
@@ -69,7 +106,7 @@ running on Kubernetes.
 ```bash
 # open shell in a Keycloak instace
 cd /path/to/keycloak/bin # e.g. /opt/bitnami/keycloak/bin
-./kc.sh export --file /tmp/export.json --realm your-realm
+KC_CACHE=local ./kc.sh export --dir /tmp --users same_file  --realm your-realm
 ```
 Copying exported data to your computer can be done like so:
 

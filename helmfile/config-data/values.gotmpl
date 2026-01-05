@@ -5,6 +5,7 @@
 hostname: {{ .Values.hostname }}
 tls: {{ .Values.tls }}
 auth:
+  importFileLocation: {{ .Values.auth.importFileLocation }}
   realmname: {{ .Values.auth.realmname }}
   clientId: {{ .Values.auth.clientId }}
   clientSecret: {{ .Values.auth.clientSecret }}

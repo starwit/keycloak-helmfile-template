@@ -1,78 +1,9 @@
+{{- $file := .Values.auth.importFileLocation }}
 apiVersion: v1
-data:
-  realmimport.json: |-
-    {
-      "enabled": true,
-      "realm": "{{ .Values.auth.realmname }}",
-      "clients": [
-        {
-          "clientId": "{{ .Values.auth.clientId }}",
-          "name": "{{ .Values.auth.realmname }}",
-          "description": "{{ .Values.auth.realmname }}",
-          "enabled": true,
-          "clientAuthenticatorType": "client-secret",
-          "secret": "{{ .Values.auth.clientSecret }}",
-          "redirectUris": [
-            "http{{- if .Values.tls }}s{{- end }}://dashboard.{{ .Values.hostname }}/*",
-            "http{{- if .Values.tls }}s{{- end }}://cockpit.{{ .Values.hostname }}/*"
-          ],
-          "webOrigins": [
-            "+"
-          ]
-        }
-      ],
-      "clientScopes": [
-        {
-          "name": "roles",
-          "protocol": "openid-connect",
-          "protocolMappers": [
-            {
-              "name": "realm roles",
-              "protocol": "openid-connect",
-              "protocolMapper": "oidc-usermodel-realm-role-mapper",
-              "consentRequired": false,
-              "config": {
-                "multivalued": "true",
-                "userinfo.token.claim": "true",
-                "user.attribute": "foo",
-                "id.token.claim": "true",
-                "access.token.claim": "true",
-                "claim.name": "realm_access.roles",
-                "jsonType.label": "String"
-              }
-            }
-          ]
-        }
-      ],
-      "roles": {
-        "realm": [
-          {
-            "name": "admin",
-            "composite": false,
-            "clientRole": false
-          }
-        ]
-      },
-      "users": [
-        {
-          "username": "admin",
-          "email": "admin@example.com",
-          "enabled": true,
-          "firstName": "Admin",
-          "lastName": "User",
-          "credentials": [
-            {
-              "type": "password",
-              "value": "{{ .Values.auth.realmAdminPw }}"
-            }
-          ],
-          "realmRoles": [
-            "admin"
-          ]
-        }
-      ]
-    }
 kind: ConfigMap
 metadata:
   creationTimestamp: null
   name: realm-import
+data:
+  realmimport.json: |-
+    {{- tpl ($.Files.Get $file) . | nindent 4 }}

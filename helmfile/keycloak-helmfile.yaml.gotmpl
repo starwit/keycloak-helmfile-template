@@ -14,10 +14,23 @@ environments:
         hostname: cluster.local
         tls: false
         auth:
-          enabled: false
-          realmname: realmname
-          keycloak_admin_pw: adminUserPw
+          keycloak_admin_pw: {{ requiredEnv "KEYCLOAK_ADMIN" }}
           keycloak_db_password: {{ requiredEnv "KEYCLOAK_DB_PW" }}
+          importFileLocation: {{ requiredEnv "REALM_IMPORT_LOCATION" }}
+          realmname: realmname
+          clientId: testClientId
+          clientSecret: testClientSecret
+          realmAdminPw: adminUserPw
+  remote:
+    values:
+      - namespace: auth-test
+        hostname: yourdomain.com
+        tls: true
+        auth:
+          keycloak_admin_pw: {{ requiredEnv "KEYCLOAK_ADMIN" }}
+          keycloak_db_password: {{ requiredEnv "KEYCLOAK_DB_PW" }}
+          importFileLocation: {{ requiredEnv "REALM_IMPORT_LOCATION" }}
+          realmname: realmname
           clientId: testClientId
           clientSecret: testClientSecret
           realmAdminPw: adminUserPw
@@ -53,20 +66,22 @@ releases:
           - "--import-realm"
           - "--proxy-headers=xforwarded"
           - "--http-management-relative-path=/admin"
+          - "--log-level=INFO"
         extraEnv: |
           - name: KC_BOOTSTRAP_ADMIN_USERNAME
             value: admin
           - name: KC_BOOTSTRAP_ADMIN_PASSWORD
-            value: {{ .Values.auth.keycloak_db_password }}
+            value: {{ .Values.auth.keycloak_admin_pw }}
           - name: KC_HOSTNAME
             value: auth.{{ .Values.hostname }}
           - name: KC_HOSTNAME_URL
-            value: http://auth.{{ .Values.hostname }}
+            value: http{{- if .Values.tls }}s{{- end }}://auth.{{ .Values.hostname }}
           - name: KC_HOSTNAME_ADMIN_URL
-            value: http://auth-console.{{ .Values.hostname }}
+            value: http{{- if .Values.tls }}s{{- end }}://auth-console.{{ .Values.hostname }}
           - name: JAVA_OPTS_APPEND
             value: >-
               -Djgroups.dns.query=keycloak-headless
+              -Dcom.redhat.fips=false
         extraVolumes: |
           - name: realm-import
             configMap:
@@ -94,21 +109,24 @@ releases:
           httpGet:
             path: '/admin/health/ready'
             port: 'http-internal'
+          periodSeconds: 25            
         livenessProbe: |
           httpGet:
             path: '/admin/health/live'
             port: 'http-internal'
+          periodSeconds: 25
         startupProbe: |
           httpGet:
             path: '/admin/health/started'
             port: 'http-internal'
+          periodSeconds: 25
         resources:
           requests:
             memory: "768Mi"
-            cpu: "750m"
+            cpu: "2000m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "4Gi"
+            cpu: "4000m"
 
   - name: keycloakdb
     installed: true
