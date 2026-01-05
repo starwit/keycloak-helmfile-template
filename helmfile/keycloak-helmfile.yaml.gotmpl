@@ -102,6 +102,13 @@ releases:
           httpGet:
             path: '/admin/health/started'
             port: 'http-internal'
+        resources:
+          requests:
+            memory: "768Mi"
+            cpu: "750m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
 
   - name: keycloakdb
     installed: true
