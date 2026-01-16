@@ -14,7 +14,7 @@ environments:
         hostname: cluster.local
         tls: false
         auth:
-          keycloak_admin_pw: {{ requiredEnv "KEYCLOAK_ADMIN" }}
+          keycloak_admin_pw: {{ requiredEnv "KEYCLOAK_ADMIN_PW" }}
           keycloak_db_password: {{ requiredEnv "KEYCLOAK_DB_PW" }}
           importFileLocation: {{ requiredEnv "REALM_IMPORT_LOCATION" }}
           realmname: realmname
@@ -24,16 +24,16 @@ environments:
   remote:
     values:
       - namespace: auth-test
-        hostname: yourdomain.com
+        hostname: {{ requiredEnv "HOSTNAME" }}
         tls: true
         auth:
-          keycloak_admin_pw: {{ requiredEnv "KEYCLOAK_ADMIN" }}
+          keycloak_admin_pw: {{ requiredEnv "KEYCLOAK_ADMIN_PW" }}
           keycloak_db_password: {{ requiredEnv "KEYCLOAK_DB_PW" }}
           importFileLocation: {{ requiredEnv "REALM_IMPORT_LOCATION" }}
-          realmname: realmname
+          realmname: {{ requiredEnv "REALM_NAME" }}
           clientId: testClientId
-          clientSecret: testClientSecret
-          realmAdminPw: adminUserPw
+          clientSecret: {{ requiredEnv "CLIENT_SECRET" }}
+          realmAdminPw: {{ requiredEnv "KEYCLOAK_REALM_ADMIN_PW" }}
 
 ---
 releases:
@@ -49,6 +49,9 @@ releases:
     namespace: {{ .Values.namespace }}
     chart: oci://ghcr.io/codecentric/helm-charts/keycloakx
     version: 7.1.5
+    needs:
+      - config-data
+      - keycloakdb
     values:
       - database:
           vendor: postgres
